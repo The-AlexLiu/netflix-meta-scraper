@@ -2,6 +2,17 @@
 images/
 netflix_records.csv
 netflix_scraper_results.zip
+netflix_posters_*.zip
+netflix_scraper_export.zip
+temp_export/
+
+# Logs
+*.log
+frontend/*.log
+
+# Debug
+debug_page.html
+debug_page_load.png
 
 # Python
 __pycache__/
@@ -9,6 +20,11 @@ __pycache__/
 *$py.class
 venv/
 .env
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
 
 # OS
 .DS_Store

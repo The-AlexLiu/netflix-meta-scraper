@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* Tailwind v4: Define custom theme tokens via @theme */
+@theme {
+  --color-netflix-red: #E50914;
+  --color-netflix-dark-red: #B20710;
+  --color-netflix-black: #020617;
+  --color-netflix-gray: #2F2F2F;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-netflix-black);
+  color: #fff;
+  font-family: 'Fira Sans', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Cinematic Background Overlay */
+.bg-cinematic {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('/bg.png');
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+}
+
+.bg-cinematic-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(to bottom, rgba(2, 6, 23, 0.8) 0%, rgba(2, 6, 23, 0.95) 100%);
+  z-index: -1;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-netflix-red);
+}
+
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hero-text {
+  text-shadow: 0 0 20px rgba(229, 9, 20, 0.4);
+}
+
+.mono {
+  font-family: 'Fira Code', monospace;
+}
+
+input:focus {
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.3);
+}
+
+/* Card Animations */
+.card-scale {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.card-scale:hover {
+  transform: scale(1.03) translateY(-4px);
+}

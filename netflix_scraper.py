@@ -2,6 +2,8 @@ import os
 import time
 import csv
 import re
+import argparse
+from datetime import datetime
 import requests
 from playwright.sync_api import sync_playwright
 
@@ -10,7 +12,7 @@ URL = "https://about.netflix.com/zh_cn/new-to-watch"
 OUTPUT_DIR = "images"
 CSV_FILE = "netflix_records.csv"
 TARGET_WIDTH = 450
-HEADLESS = False # Hover often works better in non-headless or with specific UA
+HEADLESS = True
 
 def download_image(url, filename):
     try:
@@ -43,6 +45,7 @@ def get_description(browser_context, detail_url):
     page = browser_context.new_page()
     try:
         page.goto(detail_url, wait_until="domcontentloaded", timeout=30000)
+        page.mouse.wheel(0, 300)
         time.sleep(3)
         
         selectors = [
@@ -80,15 +83,25 @@ def save_records(records):
         dict_writer.writeheader()
         dict_writer.writerows(records)
 
-def scrape_netflix_data():
+def parse_date(date_str):
+    try:
+        # Standardize format: 2026/2/9 -> 2026-02-09
+        return datetime.strptime(date_str.strip(), "%Y/%m/%d")
+    except:
+        return None
+
+def scrape_netflix_data(start_date_str=None, end_date_str=None):
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
+
+    start_date = parse_date(start_date_str) if start_date_str else None
+    end_date = parse_date(end_date_str) if end_date_str else None
 
     all_records = []
     processed_titles = set()
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=HEADLESS)
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             viewport={"width": 1440, "height": 900}
@@ -100,16 +113,16 @@ def scrape_netflix_data():
         time.sleep(10)
 
         page_num = 1
+        out_of_range_count = 0
+        
         while True:
             print(f"\n--- Scraping Page {page_num} ---")
             
-            # Scroll to load and ensure cards are interactable
-            for i in range(5):
-                page.mouse.wheel(0, 1000)
-                time.sleep(1)
+            for i in range(10):
+                page.mouse.wheel(0, 800)
+                time.sleep(0.5)
             time.sleep(2)
             
-            # Find and process containers
             containers = page.query_selector_all("div[class*='TitleContainer']")
             print(f"Found {len(containers)} containers.")
             
@@ -117,11 +130,9 @@ def scrape_netflix_data():
             
             for container in containers:
                 try:
-                    # 1. Hover to reveal metadata (Crucial for date)
                     container.hover()
-                    time.sleep(1) # Wait for overlay
+                    time.sleep(0.5)
                     
-                    # 2. Extract Data from Card
                     link_el = container.query_selector("a[href*='/watch/']")
                     if not link_el: continue
                     
@@ -132,17 +143,33 @@ def scrape_netflix_data():
                     
                     watch_url = link_el.get_attribute("href")
                     
-                    # Date extraction with broader search in inner HTML
-                    html = container.inner_html()
-                    date_match = re.search(r'\d{4}/\d{1,2}/\d{1,2}', html)
-                    release_date = date_match.group() if date_match else "Unknown"
+                    all_text = container.inner_text()
+                    date_match = re.search(r'\d{4}/\d{1,2}/\d{1,2}', all_text)
+                    date_str = date_match.group() if date_match else None
                     
+                    # Filtering Logic
+                    if date_str:
+                        item_date = parse_date(date_str)
+                        if item_date:
+                            # If we have an end date, skip items NEWER than end date
+                            if end_date and item_date > end_date:
+                                continue
+                            # If we have a start date, skip items OLDER than start date
+                            if start_date and item_date < start_date:
+                                print(f"  Reached item dated {date_str} (older than {start_date_str}). Stopping.")
+                                out_of_range_count += 1
+                                if out_of_range_count > 3: # Buffer for non-sequential items
+                                    break
+                                continue
+                    
+                    # Reset buffer if we find a valid item
+                    out_of_range_count = 0
+
                     img_el = container.query_selector("img")
                     src = img_el.get_attribute("src") if img_el else None
                     
-                    print(f"  [{len(all_records)+1}] {title} ({release_date})")
+                    print(f"  [{len(all_records)+1}] {title} ({date_str or 'Unknown'})")
                     
-                    # 3. Process image
                     poster_filename = "N/A"
                     if src:
                         high_res_url = get_high_res_url(src)
@@ -152,12 +179,11 @@ def scrape_netflix_data():
                         if not os.path.exists(target_path):
                             download_image(high_res_url, target_path)
                     
-                    # 4. Fetch Synopsis
                     description = get_description(context, watch_url)
                     
                     all_records.append({
                         "Title": title,
-                        "Release Date": release_date,
+                        "Release Date": date_str or "Unknown",
                         "Description": description,
                         "Poster Filename": poster_filename,
                         "Watch URL": watch_url
@@ -168,10 +194,11 @@ def scrape_netflix_data():
 
                 except Exception as e:
                     pass
+            
+            if out_of_range_count > 3: break
 
             print(f"Page {page_num} completed. Collected {new_items_on_page} items.")
 
-            # Next Page logic
             next_page_num = page_num + 1
             next_btn = page.query_selector(f'button:has-text("{next_page_num}")')
             if not next_btn:
@@ -185,8 +212,13 @@ def scrape_netflix_data():
             else:
                 break
 
-        print(f"\nFinal Records: {len(all_records)}")
+        print(f"\nScraping Task Finished. Total: {len(all_records)}")
         browser.close()
 
 if __name__ == "__main__":
-    scrape_netflix_data()
+    parser = argparse.ArgumentParser(description="Netflix Meta-Scraper with Date Filtering")
+    parser.add_argument("--start", help="Start date (YYYY/M/D)", default=None)
+    parser.add_argument("--end", help="End date (YYYY/M/D)", default=None)
+    args = parser.parse_args()
+    
+    scrape_netflix_data(args.start, args.end)
