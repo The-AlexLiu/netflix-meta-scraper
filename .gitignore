@@ -1,0 +1,15 @@
+# Data & Results
+images/
+netflix_records.csv
+netflix_scraper_results.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
