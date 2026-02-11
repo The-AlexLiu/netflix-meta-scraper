@@ -1,109 +1,106 @@
-# Netflix Meta-Scraper & Content Engine
+# Netflix Meta-Scraper & Content Engine (全自动 Netflix 内容生成引擎)
 
 ![Project Banner](images/Title_Page.jpg)
 
-## 🚀 Overview
+## 🚀 项目简介
 
-**Netflix Meta-Scraper** is an advanced, automated content engine designed for social media creators (Xiaohongshu/Instagram). It combines web scraping, AI content generation, and dynamic image processing to produce ready-to-post "New on Netflix" updates in seconds.
+**Netflix Meta-Scraper** 是专为自媒体创作者（小红书/Instagram）打造的全栈内容自动化工具。它将数据采集、视觉设计、AI 文案创作无缝整合，能够在几秒钟内生成高质量的“Netflix 本周新片”图文素材，助你轻松打造爆款内容。
 
-## ✨ Key Features
+## ✨ 核心功能
 
-- **🔍 Intelligent Scraper**: Automatically scrapes the latest Netflix "New to Watch" releases for any date range (handles pagination and dynamic loading).
-- **🎨 Auto-Design Engine**: Generates high-fidelity "Ratings Champion" (收视冠军) cover images dynamically based on the date range.
-- **🤖 AI Copywriter**: Integrated with GPT-4o-mini to write enthusiastic, emoji-rich social media posts (Little Red Book style).
-- **📦 Smart Packaging**: One-click download of all assets (Cover Image + High-Res Movie Posters) in a clean Zip file (CSV removed).
-- **⚡️ Modern UI**: Beautiful, responsive dashboard built with React + Vite + Tailwind CSS.
+- **🔍 智能采集引擎**: 自动抓取 Netflix 官网“最新上映”数据，支持精确的日期范围筛选（从第1页到第N页全量扫描）。
+- **🎨 动态封面生成**: 自动生成 1242x1656px 高清竖版封面，内置“收视冠军”主题设计，实时渲染上映日期范围。
+- **🤖 AI 文案创作**: 集成 GPT-4o-mini，自动撰写 emoji 丰富、语气热情的小红书风格文案（包含动态标题和标准化 Tag）。
+- **📦 一键素材打包**: 告别繁琐操作，一键下载 `Title_Page.jpg`（封面）+ 所有高清电影海报，自动剔除无关文件。
+- **⚡️ 极客交互界面**: 基于 React + Vite + Tailwind CSS 打造的电影级深色 UI，提供实时日志反馈和流畅的交互体验。
 
-## 🛠️ Tech Stack
+## 🛠️ 技术栈
 
-- **Backend**: Python 3.9+, FastAPI, Playwright (Async), OpenAI API
-- **Frontend**: React 18, Vite, Tailwind CSS, Framer Motion, Lucide Icons
-- **Image Processing**: Pillow (PIL), Playwright Screenshot Strategy
+- **后端**: Python 3.9+, FastAPI, Playwright (Async), OpenAI API
+- **前端**: React 18, Vite, Tailwind CSS, Framer Motion
+- **图像处理**: Pillow (PIL), Playwright Screenshot Strategy
 
-## 📦 Installation
+## 📦 安装指南
 
-### Prerequisites
+### 前置要求
 
 - Python 3.9+
 - Node.js 16+
-- Google Chrome (for Playwright)
+- Google Chrome 浏览器 (用于 Playwright 渲染)
 
-### 1. Clone the Repository
+### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/StartToFinish-V/netflix-meta-scraper.git
+git clone https://github.com/The-AlexLiu/netflix-meta-scraper.git
 cd netflix-meta-scraper
 ```
 
-### 2. Backend Setup
+### 2. 后端配置
 
 ```bash
-# Install Python dependencies
+# 安装 Python 依赖
 pip install -r requirements.txt
 
-# Install Playwright browsers
+# 安装 Playwright 浏览器内核
 playwright install chromium
 ```
 
-### 3. Frontend Setup
+### 3. 前端配置
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 4. Configuration (.env)
+### 4. 环境变量 (.env)
 
-Create a `.env` file in the root directory:
+在项目根目录创建 `.env` 文件，填入你的 OpenAI Key：
 
 ```ini
 OPENAI_API_KEY=sk-your-api-key-here
 ```
 
-## 🚀 Usage
+## 🚀 使用说明
 
-### Start the Application
+### 启动项目
 
-1. **Start Backend** (Root Directory):
+1. **启动后端服务** (在根目录):
    ```bash
    python app.py
    ```
-2. **Start Frontend** (Frontend Directory):
+2. **启动前端界面** (在 frontend 目录):
    ```bash
    cd frontend
    npm run dev
    ```
-3. Open your browser at `http://localhost:5173`.
+3. 打开浏览器访问: `http://localhost:5173`
 
-### Workflow
+### 操作流程
 
-1. **Select Date Range**: Choose the dates you want to cover (e.g., Feb 11 - Feb 15).
-2. **Initiate**: Click to start the scraper. The system will:
-   - Scrape Netflix for new releases.
-   - Download high-res posters.
-   - Generate a custom "Title Page" cover.
-3. **Generate Note**: AI will write a perfect social media caption for you.
-4. **Download All**: Get a single Zip file with your Cover Image and all Movie Posters.
+1. **选择日期**: 设置你想抓取的时间段（例如：2月11日 - 2月15日）。
+2. **点击 INITIATE**: 系统将自动开始爬取数据、下载海报、并生成封面。
+3. **生成 AI 文案**: 抓取完成后，点击 `Generate Note` 获取 AI 撰写的小红书文案。
+4. **一键下载**: 点击 `Download All Assets`，获得包含封面和所有海报的纯净压缩包。
 
-## 📂 Project Structure
+## 📂 项目结构
 
 ```
 .
-├── app.py                 # FastAPI Backend & API Endpoints
-├── netflix_scraper.py     # Core Playwright Scraper Logic
-├── title_generator/       # Dynamic Cover Image Generator
-├── images/                # Scraped Images & Generated Assets
-├── frontend/              # React + Vite Frontend
+├── app.py                 # FastAPI 后端核心 & API 接口
+├── netflix_scraper.py     # Playwright 爬虫脚本
+├── title_generator/       # 动态封面生成器模块
+├── images/                # 图片素材缓存目录
+├── frontend/              # React + Vite 前端源码
 │   ├── src/
-│   │   ├── App.jsx        # Main UI Logic
-│   │   └── index.css      # Tailwind & Global Styles
-│   └── vite.config.js     # Frontend Config (Proxy to Backend)
-└── requirements.txt       # Python Dependencies
+│   │   ├── App.jsx        # 主 UI 逻辑
+│   │   └── index.css      # Tailwind & 全局样式
+│   └── vite.config.js     # 前端配置 (含 API 代理)
+└── requirements.txt       # Python 依赖列表
 ```
 
-## 📝 License
+## 📝 开源协议
 
-MIT License. Free to use and modify.
+MIT License. 仅供学习与研究使用。
 
 ---
 
