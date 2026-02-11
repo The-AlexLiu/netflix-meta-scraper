@@ -99,6 +99,7 @@ def scrape_netflix_data(start_date_str=None, end_date_str=None):
 
     all_records = []
     processed_titles = set()
+    max_pages = 5  # Safety limit to avoid infinite loops
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=HEADLESS)
@@ -113,7 +114,6 @@ def scrape_netflix_data(start_date_str=None, end_date_str=None):
         time.sleep(10)
 
         page_num = 1
-        out_of_range_count = 0
         
         while True:
             print(f"\n--- Scraping Page {page_num} ---")
@@ -147,23 +147,18 @@ def scrape_netflix_data(start_date_str=None, end_date_str=None):
                     date_match = re.search(r'\d{4}/\d{1,2}/\d{1,2}', all_text)
                     date_str = date_match.group() if date_match else None
                     
-                    # Filtering Logic
+                    # Filtering Logic: skip items outside the date range, but keep scanning
                     if date_str:
                         item_date = parse_date(date_str)
                         if item_date:
-                            # If we have an end date, skip items NEWER than end date
                             if end_date and item_date > end_date:
+                                print(f"  Skipping {title} ({date_str}) — newer than end date.")
                                 continue
-                            # If we have a start date, skip items OLDER than start date
                             if start_date and item_date < start_date:
-                                print(f"  Reached item dated {date_str} (older than {start_date_str}). Stopping.")
-                                out_of_range_count += 1
-                                if out_of_range_count > 3: # Buffer for non-sequential items
-                                    break
+                                print(f"  Skipping {title} ({date_str}) — older than start date.")
                                 continue
                     
-                    # Reset buffer if we find a valid item
-                    out_of_range_count = 0
+
 
                     img_el = container.query_selector("img")
                     src = img_el.get_attribute("src") if img_el else None
@@ -195,7 +190,7 @@ def scrape_netflix_data(start_date_str=None, end_date_str=None):
                 except Exception as e:
                     pass
             
-            if out_of_range_count > 3: break
+
 
             print(f"Page {page_num} completed. Collected {new_items_on_page} items.")
 
@@ -204,7 +199,7 @@ def scrape_netflix_data(start_date_str=None, end_date_str=None):
             if not next_btn:
                 next_btn = page.query_selector('button[aria-label="Next"], button[aria-label*="下一页"]')
 
-            if next_btn and new_items_on_page > 0:
+            if next_btn and page_num < max_pages:
                 print(f"Moving to Page {next_page_num}...")
                 next_btn.click()
                 page_num += 1

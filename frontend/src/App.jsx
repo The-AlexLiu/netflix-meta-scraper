@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Calendar, Download, CheckCircle2, Loader2, Image as ImageIcon, ExternalLink, ScrollText, Zap, Shield, Globe } from 'lucide-react';
+import { Play, Calendar, Download, CheckCircle2, Loader2, Image as ImageIcon, ExternalLink, ScrollText, Zap, Shield, Globe, Sparkles, X, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Convert "2026/02/11" to "2月11日" format
+const formatDateChinese = (dateStr) => {
+  if (!dateStr) return dateStr;
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return dateStr;
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  return `${month}月${day}日`;
+};
 
 const App = () => {
   const [startDate, setStartDate] = useState('2026/02/09');
@@ -10,13 +20,19 @@ const App = () => {
   const [logs, setLogs] = useState([]);
   const [results, setResults] = useState([]);
   const [count, setCount] = useState(0);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [generatingNote, setGeneratingNote] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [titleImage, setTitleImage] = useState(null);
+  const [generatingTitle, setGeneratingTitle] = useState(false);
   const logEndRef = useRef(null);
 
   useEffect(() => {
     if (status === 'running' && jobId) {
       const interval = setInterval(async () => {
         try {
-          const res = await fetch(`http://localhost:8000/api/status/${jobId}`);
+          const res = await fetch(`/api/status/${jobId}`);
           const data = await res.json();
           setLogs(data.logs || []);
           setCount(data.count || 0);
@@ -37,9 +53,12 @@ const App = () => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
+  // Standardized tags
+  const STANDARD_TAGS = "#Netflix #奈飞 #网剧 #新剧 #美剧";
+
   const fetchResults = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/results');
+      const res = await fetch('/api/results');
       const data = await res.json();
       setResults(data);
     } catch (err) {
@@ -49,18 +68,85 @@ const App = () => {
 
   const handleDownload = async () => {
     try {
-      window.open('http://localhost:8000/api/download', '_blank');
+      window.open('/api/download', '_blank');
     } catch (err) {
       console.error('Download error:', err);
     }
+  };
+
+  const handleGenerateNote = async () => {
+    setGeneratingNote(true);
+    const dynamicTitle = `Netflix 本周 ${results.length} 部新片，拯救你的剧荒`;
+    
+    // Construct prompt manually to ensure title/tags are enforced
+    const customPrompt = `
+    Requirement:
+    1. Title MUST be exactly: "${dynamicTitle}"
+    2. Tags MUST be exactly: "${STANDARD_TAGS}"
+    3. Content: Enthusiastic recommendation of these specific movies (list below).
+    4. Format: Mobile-friendly, short paragraphs, emoji-rich.
+    5. No markdown bold (**text**).
+    `;
+
+    try {
+      const res = await fetch('/api/generate_note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            start_date: startDate, 
+            end_date: endDate,
+            custom_prompt: customPrompt, // Backend needs to support this or we rely on backend logic?
+            // Actually, best to handle "count" in backend or pass title/tags to backend.
+            // Let's pass the "title" and "tags" override to backend if possible, 
+            // OR just update the backend prompt logic. 
+            // User asked for "results.length" which is available here in frontend.
+            // So I will pass text "override_title" and "override_tags".
+            override_title: dynamicTitle,
+            override_tags: STANDARD_TAGS
+        })
+      });
+      const data = await res.json();
+      if (data.note) {
+        setNoteContent(data.note);
+        setShowNoteModal(true);
+      } else {
+        console.error('Note generation failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Generate note error:', err);
+    } finally {
+      setGeneratingNote(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(noteContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleStartScrape = async () => {
     setStatus('running');
     setLogs([]);
     setCount(0);
+    setTitleImage(null);
+    setGeneratingTitle(true);
+
+    // Trigger Title Generation in parallel
+    fetch('/api/generate_title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date_range: `${formatDateChinese(startDate)}～${formatDateChinese(endDate)}`, title: "收视冠军" })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.image_url) setTitleImage(data.image_url);
+    })
+    .catch(err => console.error("Title generation error:", err))
+    .finally(() => setGeneratingTitle(false));
+
     try {
-      const res = await fetch('http://localhost:8000/api/scrape', {
+      const res = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ start_date: startDate, end_date: endDate })
@@ -214,6 +300,25 @@ const App = () => {
                 <Download className="w-6 h-6" /> Export All Data
               </motion.button>
             )}
+            
+            {/* AI Magic Note Button */}
+            {(results.length > 0 || status === 'completed') && (
+              <motion.button 
+                onClick={handleGenerateNote}
+                disabled={generatingNote}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white py-8 rounded-[2rem] font-black text-xl flex items-center justify-center gap-4 transition-all uppercase tracking-tight cursor-pointer shadow-lg shadow-purple-500/30"
+              >
+                {generatingNote ? (
+                   <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                   <Sparkles className="w-6 h-6 fill-current" />
+                )}
+                {generatingNote ? "Crafting..." : "Generate Magic Note"}
+              </motion.button>
+            )}
 
             {/* Running Indicator */}
             {status === 'running' && (
@@ -235,6 +340,53 @@ const App = () => {
             )}
           </aside>
         </section>
+
+        {/* Generated Assets Section */}
+        {(titleImage || generatingTitle) && (
+            <section className="space-y-6">
+                <div className="glass p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-10">
+                    <div className="w-full md:w-1/3 aspect-[3/4] bg-black/50 rounded-2xl overflow-hidden relative shadow-2xl border border-white/10 group">
+                        {titleImage ? (
+                            <>
+                            <img 
+                                key={titleImage} // Force reload on change
+                                src={`/images/${titleImage}?t=${Date.now()}`} 
+                                className="w-full h-full object-cover" 
+                                alt="Title Page" 
+                            />
+                            <button 
+                                onClick={handleDownload}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 font-bold text-white cursor-pointer"
+                            >
+                                <Download className="w-6 h-6" /> Download All Assets
+                            </button>
+                            </>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center flex-col gap-4 text-white/30">
+                                <Loader2 className="w-10 h-10 animate-spin" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Generating Cover...</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex-1 space-y-6 text-center md:text-left">
+                        <div>
+                            <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Social Media Kit</h3>
+                            <p className="text-white/50 text-lg">
+                                Ready-to-post cover image + <span className="text-white">{results.length}</span> extracted posters.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                             <div className="px-4 py-2 bg-white/5 rounded-lg text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-netflix-red" /> 1242x1656px
+                             </div>
+                             <div className="px-4 py-2 bg-white/5 rounded-lg text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-netflix-red" /> Retina Quality
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        )}
 
         {/* Interactive Gallery */}
         <section className="space-y-12">
@@ -266,7 +418,7 @@ const App = () => {
                   >
                     <div className="aspect-[450/630] bg-white/5 rounded-2xl overflow-hidden border border-white/5 active:scale-95 transition-all card-scale shadow-2xl relative">
                        <img 
-                          src={`http://localhost:8000/images/${item["Poster Filename"]}`} 
+                          src={`/images/${item["Poster Filename"]}`} 
                           alt={item.Title}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] group-hover:grayscale-0"
                           onError={(e) => { e.target.style.display = 'none'; }}
@@ -304,6 +456,59 @@ const App = () => {
           Automated by Deepmind Antigravity • Premium Extraction Engine v2.0
         </footer>
       </div>
+      
+      {/* Note Modal */}
+      <AnimatePresence>
+        {showNoteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNoteModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-[#1a1a1a] border border-white/10 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl z-10"
+            >
+              {/* Header */}
+              <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <h3 className="text-xl font-black flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  Xiaohongshu Magic Note
+                </h3>
+                <button 
+                  onClick={() => setShowNoteModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Content */}
+              <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="whitespace-pre-wrap font-sans text-lg leading-relaxed text-white/90 selection:bg-purple-500/30">
+                  {noteContent}
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="px-8 py-6 border-t border-white/5 bg-white/[0.02] flex justify-end">
+                <button 
+                  onClick={copyToClipboard}
+                  className="bg-white text-black hover:bg-white/90 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Copied!" : "Copy to Clipboard"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

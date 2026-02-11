@@ -1,0 +1,61 @@
+/* Reset and Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 1242px;
+  height: 1656px;
+  margin: 0;
+  font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  background-color: #000;
+  overflow: hidden; /* Prevent scrollbars during screenshot */
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  background-image: url("Background.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* justify-content is managed by padding to place text below the "N" */
+}
+
+.content {
+    /* 
+       Adjusted for massive text size.
+       Moved up slightly from 1100 to 1050 because the larger text will take up more vertical space downwards.
+    */
+    margin-top: 1050px; 
+    text-align: center;
+    color: white;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px; /* Increased gap */
+}
+
+/* Typography matching the demo */
+.title {
+    font-size: 220px; /* Massive increase from 180px */
+    font-weight: 800; /* Extra Bold */
+    line-height: 1.0;
+    letter-spacing: 5px;
+    text-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+}
+
+.subtitle {
+    font-size: 100px; /* Significant increase from 80px */
+    font-weight: 600; /* Slightly bolder */
+    opacity: 0.95;
+    letter-spacing: 3px;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
